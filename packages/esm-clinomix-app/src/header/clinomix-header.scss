@@ -1,0 +1,11 @@
+@use '@carbon/layout';
+@use '@openmrs/esm-styleguide/src/vars' as *;
+
+.header {
+  background-color: $ui-02;
+  border-block: 1px solid $ui-03;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-right: layout.$spacing-03;
+}

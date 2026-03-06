@@ -1,0 +1,263 @@
+{
+   "resourceType": "QuestionnaireResponse",
+   "id": "ASLPA1-positive-response",
+   "extension": [
+      {
+         "url": "http://hl7.org/fhir/us/davinci-dtr/StructureDefinition/dtr-questionnaireresponse-questionnaire",
+         "valueReference": {
+            "reference": "#ASLPA1-positive"
+         }
+      }
+   ],
+   "questionnaire": "http://example.org/sdh/dtr/aslp/Questionnaire/ASLPA1",
+   "status": "in-progress",
+   "subject": {
+      "reference": "Patient/positive"
+   },
+   "item": [
+      {
+         "linkId": "0",
+         "definition": "http://example.org/sdh/dtr/aslp/StructureDefinition/aslp-sleep-study-order",
+         "text": "A sleep study procedure being ordered",
+         "item": [
+            {
+               "extension": [
+                  {
+                     "url": "http://hl7.org/fhir/StructureDefinition/questionnaireresponse-author",
+                     "valueReference": {
+                        "reference": "http://cqframework.org/fhir/Device/clinical-quality-language"
+                     }
+                  }
+               ],
+               "linkId": "1",
+               "definition": "http://example.org/sdh/dtr/aslp/StructureDefinition/aslp-sleep-study-order#ServiceRequest.code",
+               "text": "A sleep study procedure being ordered",
+               "answer": [
+                  {
+                     "valueCoding": {
+                        "system": "http://example.org/sdh/dtr/aslp/CodeSystem/aslp-codes",
+                        "code": "ASLP.A1.DE2",
+                        "display": "Home sleep apnea testing (HSAT)"
+                     }
+                  }
+               ]
+            },
+            {
+               "extension": [
+                  {
+                     "url": "http://hl7.org/fhir/StructureDefinition/questionnaireresponse-author",
+                     "valueReference": {
+                        "reference": "http://cqframework.org/fhir/Device/clinical-quality-language"
+                     }
+                  }
+               ],
+               "linkId": "2",
+               "definition": "http://example.org/sdh/dtr/aslp/StructureDefinition/aslp-sleep-study-order#ServiceRequest.occurrence[x]",
+               "text": "Date of the procedure",
+               "answer": [
+                  {
+                     "valueDateTime": "2023-04-10T08:00:00.000Z"
+                  }
+               ]
+            }
+         ]
+      },
+      {
+         "linkId": "0",
+         "definition": "http://example.org/sdh/dtr/aslp/StructureDefinition/aslp-sleep-study-order",
+         "text": "A sleep study procedure being ordered",
+         "item": [
+            {
+               "extension": [
+                  {
+                     "url": "http://hl7.org/fhir/StructureDefinition/questionnaireresponse-author",
+                     "valueReference": {
+                        "reference": "http://cqframework.org/fhir/Device/clinical-quality-language"
+                     }
+                  }
+               ],
+               "linkId": "1",
+               "definition": "http://example.org/sdh/dtr/aslp/StructureDefinition/aslp-sleep-study-order#ServiceRequest.code",
+               "text": "A sleep study procedure being ordered",
+               "answer": [
+                  {
+                     "valueCoding": {
+                        "system": "http://example.org/sdh/dtr/aslp/CodeSystem/aslp-codes",
+                        "code": "ASLP.A1.DE14",
+                        "display": "Artificial intelligence (AI)"
+                     }
+                  }
+               ]
+            },
+            {
+               "extension": [
+                  {
+                     "url": "http://hl7.org/fhir/StructureDefinition/questionnaireresponse-author",
+                     "valueReference": {
+                        "reference": "http://cqframework.org/fhir/Device/clinical-quality-language"
+                     }
+                  }
+               ],
+               "linkId": "2",
+               "definition": "http://example.org/sdh/dtr/aslp/StructureDefinition/aslp-sleep-study-order#ServiceRequest.occurrence[x]",
+               "text": "Date of the procedure",
+               "answer": [
+                  {
+                     "valueDateTime": "2023-04-15T08:00:00.000Z"
+                  }
+               ]
+            }
+         ]
+      },
+      {
+         "extension": [
+            {
+               "url": "http://hl7.org/fhir/StructureDefinition/questionnaireresponse-author",
+               "valueReference": {
+                  "reference": "http://cqframework.org/fhir/Device/clinical-quality-language"
+               }
+            }
+         ],
+         "linkId": "3",
+         "definition": "http://example.org/sdh/dtr/aslp/StructureDefinition/aslp-diagnosis-of-obstructive-sleep-apnea#Condition.code",
+         "text": "Diagnosis of Obstructive Sleep Apnea",
+         "answer": [
+            {
+               "valueCoding": {
+                  "system": "http://example.org/sdh/dtr/aslp/CodeSystem/aslp-codes",
+                  "code": "ASLP.A1.DE17",
+                  "display": "Obstructive sleep apnea (OSA)"
+               }
+            }
+         ]
+      },
+      {
+         "extension": [
+            {
+               "url": "http://hl7.org/fhir/StructureDefinition/questionnaireresponse-author",
+               "valueReference": {
+                  "reference": "http://cqframework.org/fhir/Device/clinical-quality-language"
+               }
+            }
+         ],
+         "linkId": "4",
+         "definition": "http://example.org/sdh/dtr/aslp/StructureDefinition/aslp-history-of-hypertension#Observation.value[x]",
+         "text": "History of Hypertension",
+         "answer": [
+            {
+               "valueBoolean": true
+            }
+         ]
+      },
+      {
+         "extension": [
+            {
+               "url": "http://hl7.org/fhir/StructureDefinition/questionnaireresponse-author",
+               "valueReference": {
+                  "reference": "http://cqframework.org/fhir/Device/clinical-quality-language"
+               }
+            }
+         ],
+         "linkId": "5",
+         "definition": "http://example.org/sdh/dtr/aslp/StructureDefinition/aslp-history-of-diabetes#Observation.value[x]",
+         "text": "History of Diabetes",
+         "answer": [
+            {
+               "valueBoolean": true
+            }
+         ]
+      },
+      {
+         "extension": [
+            {
+               "url": "http://hl7.org/fhir/StructureDefinition/questionnaireresponse-author",
+               "valueReference": {
+                  "reference": "http://cqframework.org/fhir/Device/clinical-quality-language"
+               }
+            }
+         ],
+         "linkId": "6",
+         "definition": "http://example.org/sdh/dtr/aslp/StructureDefinition/aslp-height#Observation.value[x]",
+         "text": "Neck circumference (in inches)",
+         "answer": [
+            {
+               "valueQuantity": {
+                  "value": 16,
+                  "unit": "[in_i]",
+                  "system": "http://unitsofmeasure.org",
+                  "code": "[in_i]"
+               }
+            }
+         ]
+      },
+      {
+         "extension": [
+            {
+               "url": "http://hl7.org/fhir/StructureDefinition/questionnaireresponse-author",
+               "valueReference": {
+                  "reference": "http://cqframework.org/fhir/Device/clinical-quality-language"
+               }
+            }
+         ],
+         "linkId": "7",
+         "definition": "http://example.org/sdh/dtr/aslp/StructureDefinition/aslp-height#Observation.value[x]",
+         "text": "Height (in inches)",
+         "answer": [
+            {
+               "valueQuantity": {
+                  "value": 69,
+                  "unit": "[in_i]",
+                  "system": "http://unitsofmeasure.org",
+                  "code": "[in_i]"
+               }
+            }
+         ]
+      },
+      {
+         "extension": [
+            {
+               "url": "http://hl7.org/fhir/StructureDefinition/questionnaireresponse-author",
+               "valueReference": {
+                  "reference": "http://cqframework.org/fhir/Device/clinical-quality-language"
+               }
+            }
+         ],
+         "linkId": "8",
+         "definition": "http://example.org/sdh/dtr/aslp/StructureDefinition/aslp-weight#Observation.value[x]",
+         "text": "Weight (in pounds)",
+         "answer": [
+            {
+               "valueQuantity": {
+                  "value": 185,
+                  "unit": "[lb_av]",
+                  "system": "http://unitsofmeasure.org",
+                  "code": "[lb_av]"
+               }
+            }
+         ]
+      },
+      {
+         "extension": [
+            {
+               "url": "http://hl7.org/fhir/StructureDefinition/questionnaireresponse-author",
+               "valueReference": {
+                  "reference": "http://cqframework.org/fhir/Device/clinical-quality-language"
+               }
+            }
+         ],
+         "linkId": "9",
+         "definition": "http://example.org/sdh/dtr/aslp/StructureDefinition/aslp-bmi#Observation.value[x]",
+         "text": "Body mass index (BMI)",
+         "answer": [
+            {
+               "valueQuantity": {
+                  "value": 16.2,
+                  "unit": "kg/m2",
+                  "system": "http://unitsofmeasure.org",
+                  "code": "kg/m2"
+               }
+            }
+         ]
+      }
+   ]
+}

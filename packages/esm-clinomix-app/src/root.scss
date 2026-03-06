@@ -1,0 +1,11 @@
+@use '@carbon/layout';
+
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.content {
+  padding: layout.$spacing-05;
+}

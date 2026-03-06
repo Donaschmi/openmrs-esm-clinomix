@@ -1,0 +1,21 @@
+@use '@carbon/layout';
+@use '@carbon/colors';
+@use '@openmrs/esm-styleguide/src/vars' as *;
+
+.container {
+  margin: layout.$spacing-05 0;
+}
+
+.emptyTile {
+  text-align: center;
+  padding: layout.$spacing-07;
+}
+
+.emptyContent {
+  color: colors.$gray-70;
+}
+
+.errorTile {
+  padding: layout.$spacing-05;
+  color: colors.$red-60;
+}
