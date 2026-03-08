@@ -123,3 +123,18 @@
   text-align: center;
   padding: layout.$spacing-07;
 }
+
+// ── Snapshot banner ──────────────────────────────────────────────────────
+
+.snapshotBanner {
+  margin: layout.$spacing-04 layout.$spacing-05 0;
+}
+
+// ── Version history ──────────────────────────────────────────────────────
+
+.historyActions {
+  display: flex;
+  align-items: center;
+  gap: layout.$spacing-02;
+  flex-wrap: wrap;
+}

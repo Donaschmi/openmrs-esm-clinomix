@@ -4,6 +4,7 @@ import {
   Button,
   DataTable,
   DataTableSkeleton,
+  Dropdown,
   IconButton,
   Layer,
   Modal,
@@ -27,6 +28,7 @@ import { Add, Upload, View } from '@carbon/react/icons';
 import { isDesktop, showSnackbar, useLayoutType, usePagination } from '@openmrs/esm-framework';
 import {
   type FhirQuestionnaire,
+  type QuestionnaireStatus,
   devGetQuestionnaires,
   devSaveQuestionnaires,
   useQuestionnaires,
@@ -39,13 +41,15 @@ interface QuestionnaireListProps {
   onEdit: (id: string) => void;
   onView: (id: string) => void;
   onRespond: (id: string) => void;
+  onDuplicate: (id: string) => void;
 }
 
-const QuestionnairList: React.FC<QuestionnaireListProps> = ({ onNew, onEdit, onView, onRespond }) => {
+const QuestionnairList: React.FC<QuestionnaireListProps> = ({ onNew, onEdit, onView, onRespond, onDuplicate }) => {
   const { t } = useTranslation();
   const layout = useLayoutType();
   const responsiveSize = isDesktop(layout) ? 'sm' : 'lg';
   const [searchString, setSearchString] = useState('');
+  const [statusFilter, setStatusFilter] = useState<QuestionnaireStatus | 'all'>('all');
   const [pageSize, setPageSize] = useState(10);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -147,12 +151,13 @@ const QuestionnairList: React.FC<QuestionnaireListProps> = ({ onNew, onEdit, onV
 
   const filtered = useMemo(
     () =>
-      questionnaires.filter(
-        (q) =>
-          q.title?.toLowerCase().includes(searchString.toLowerCase()) ||
-          q.name?.toLowerCase().includes(searchString.toLowerCase()),
-      ),
-    [questionnaires, searchString],
+      questionnaires.filter((q) => {
+        if (statusFilter !== 'all' && q.status !== statusFilter) return false;
+        const search = searchString.toLowerCase();
+        if (!search) return true;
+        return q.title?.toLowerCase().includes(search) || q.name?.toLowerCase().includes(search);
+      }),
+    [questionnaires, searchString, statusFilter],
   );
 
   const { results, goTo, currentPage } = usePagination(filtered, pageSize);
@@ -224,6 +229,21 @@ const QuestionnairList: React.FC<QuestionnaireListProps> = ({ onNew, onEdit, onV
                       labelText={t('searchQuestionnaires', 'Search questionnaires')}
                       onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchString(e.target.value)}
                     />
+                    <Dropdown
+                      id="filter-status"
+                      titleText=""
+                      label={t('status', 'Status')}
+                      items={['all', 'draft', 'active', 'retired', 'unknown'] as const}
+                      itemToString={(item) => {
+                        if (!item || item === 'all') return t('allStatuses', 'All statuses');
+                        return item.charAt(0).toUpperCase() + item.slice(1);
+                      }}
+                      selectedItem={statusFilter}
+                      onChange={({ selectedItem }) =>
+                        setStatusFilter((selectedItem ?? 'all') as QuestionnaireStatus | 'all')
+                      }
+                      size={responsiveSize}
+                    />
                     <Button
                       kind="ghost"
                       renderIcon={Upload}
@@ -280,6 +300,10 @@ const QuestionnairList: React.FC<QuestionnaireListProps> = ({ onNew, onEdit, onV
                               >
                                 <OverflowMenuItem itemText={t('use', 'Use')} onClick={() => onRespond(row.id)} />
                                 <OverflowMenuItem itemText={t('edit', 'Edit')} onClick={() => onEdit(row.id)} />
+                                <OverflowMenuItem
+                                  itemText={t('duplicate', 'Duplicate')}
+                                  onClick={() => onDuplicate(row.id)}
+                                />
                                 <OverflowMenuItem
                                   itemText={t('delete', 'Delete')}
                                   isDelete

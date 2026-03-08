@@ -36,13 +36,18 @@ function parseElement(el: Element): unknown {
   const children = Array.from(el.children);
   const valueAttr = el.getAttribute('value');
 
-  // Primitive leaf: element has a value attribute and no child elements
-  if (children.length === 0) {
-    if (valueAttr === null) return null;
+  // FHIR primitives carry their value in a `value` XML attribute.
+  // Child elements (if present) are extensions — we ignore them for display
+  // so that e.g. <description value="..."><extension/></description>
+  // produces a plain string instead of {extension:[...]}.
+  if (valueAttr !== null) {
     if (valueAttr === 'true') return true;
     if (valueAttr === 'false') return false;
     return valueAttr;
   }
+
+  // Leaf with no value attribute and no children → nothing to extract
+  if (children.length === 0) return null;
 
   // Complex element: group children by local-name
   const obj: Record<string, unknown> = {};

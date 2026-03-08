@@ -14,11 +14,12 @@ import styles from './root.scss';
 
 type View =
   | { kind: 'list' }
-  | { kind: 'create' }
+  | { kind: 'create'; template?: FhirQuestionnaire }
   | { kind: 'edit'; id: string }
   | { kind: 'view'; id: string }
   | { kind: 'respond'; id: string }
-  | { kind: 'viewResponse'; id: string };
+  | { kind: 'viewResponse'; id: string }
+  | { kind: 'viewSnapshot'; snapshot: FhirQuestionnaire; parentId: string };
 
 const ClinomixDashboard: React.FC = () => {
   const { t } = useTranslation();
@@ -28,7 +29,7 @@ const ClinomixDashboard: React.FC = () => {
   const findById = (id: string): FhirQuestionnaire | undefined => devGetQuestionnaires().find((q) => q.id === id);
 
   if (view.kind === 'create') {
-    return <QuestionnaireForm onBack={goToList} />;
+    return <QuestionnaireForm template={view.template} onBack={goToList} />;
   }
 
   if (view.kind === 'edit') {
@@ -55,6 +56,19 @@ const ClinomixDashboard: React.FC = () => {
         questionnaire={questionnaire}
         onBack={goToList}
         onEdit={() => setView({ kind: 'edit', id: view.id })}
+        onViewSnapshot={(snapshot) => setView({ kind: 'viewSnapshot', snapshot, parentId: view.id })}
+        onRestored={() => setView({ kind: 'view', id: view.id })}
+      />
+    );
+  }
+
+  if (view.kind === 'viewSnapshot') {
+    return (
+      <QuestionnaireView
+        questionnaire={view.snapshot}
+        onBack={() => setView({ kind: 'view', id: view.parentId })}
+        onEdit={() => {}}
+        readOnly
       />
     );
   }
@@ -84,6 +98,7 @@ const ClinomixDashboard: React.FC = () => {
                 onEdit={(id) => setView({ kind: 'edit', id })}
                 onView={(id) => setView({ kind: 'view', id })}
                 onRespond={(id) => setView({ kind: 'respond', id })}
+                onDuplicate={(id) => setView({ kind: 'create', template: findById(id) })}
               />
             </TabPanel>
             <TabPanel>

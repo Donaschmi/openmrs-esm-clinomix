@@ -198,3 +198,42 @@ export function useQuestionnaires() {
     mutate: () => {},
   };
 }
+
+// ---------------------------------------------------------------------------
+// Version history
+// ---------------------------------------------------------------------------
+
+const HISTORY_KEY = 'clinomix:questionnaire-history';
+
+export function devGetVersionHistory(id: string): FhirQuestionnaire[] {
+  const stored = localStorage.getItem(HISTORY_KEY);
+  if (!stored) return [];
+  const all = JSON.parse(stored) as Record<string, FhirQuestionnaire[]>;
+  return all[id] ?? [];
+}
+
+export function devArchiveVersion(q: FhirQuestionnaire): void {
+  const stored = localStorage.getItem(HISTORY_KEY);
+  const all: Record<string, FhirQuestionnaire[]> = stored ? JSON.parse(stored) : {};
+  const existing = all[q.id] ?? [];
+  all[q.id] = [...existing, q];
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(all));
+}
+
+export function devDeleteArchivedVersion(id: string, index: number): void {
+  const stored = localStorage.getItem(HISTORY_KEY);
+  if (!stored) return;
+  const all = JSON.parse(stored) as Record<string, FhirQuestionnaire[]>;
+  const snapshots = [...(all[id] ?? [])];
+  snapshots.splice(index, 1);
+  all[id] = snapshots;
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(all));
+}
+
+export function bumpVersion(current: string | undefined, type: 'major' | 'minor' | 'patch'): string {
+  const parts = (current ?? '1.0.0').split('.').map((p) => parseInt(p, 10));
+  const [major = 1, minor = 0, patch = 0] = parts;
+  if (type === 'major') return `${major + 1}.0.0`;
+  if (type === 'minor') return `${major}.${minor + 1}.0`;
+  return `${major}.${minor}.${patch + 1}`;
+}

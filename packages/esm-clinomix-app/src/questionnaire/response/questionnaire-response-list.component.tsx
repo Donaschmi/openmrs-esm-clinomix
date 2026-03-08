@@ -10,6 +10,8 @@ import {
   OverflowMenu,
   OverflowMenuItem,
   Pagination,
+  RadioButton,
+  RadioButtonGroup,
   Table,
   TableBody,
   TableCell,
@@ -23,7 +25,7 @@ import {
   Tag,
   Tile,
 } from '@carbon/react';
-import { Upload, View } from '@carbon/react/icons';
+import { DocumentExport, Upload, View } from '@carbon/react/icons';
 import { isDesktop, showSnackbar, useLayoutType, usePagination } from '@openmrs/esm-framework';
 import {
   devDeleteResponse,
@@ -32,6 +34,7 @@ import {
   type FhirQuestionnaireResponse,
   type QuestionnaireResponseStatus,
 } from './questionnaire-response.resource';
+import { type ExportFormat, type GroupMode, exportJsonBundle, exportPdfGrouped } from './questionnaire-response-export';
 import { isXmlFile, parseFhirXml } from '../fhir-xml.parser';
 import styles from './questionnaire-response-list.scss';
 
@@ -74,6 +77,13 @@ const QuestionnaireResponseList: React.FC<QuestionnaireResponseListProps> = ({ o
   const [refreshKey, setRefreshKey] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // ── Export modal state ───────────────────────────────────────────────────────
+  const [exportOpen, setExportOpen] = useState(false);
+  const [exportFormat, setExportFormat] = useState<ExportFormat>('json');
+  const [groupMode, setGroupMode] = useState<GroupMode>('none');
+
+  // ── Import ───────────────────────────────────────────────────────────────────
+
   const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!fileInputRef.current) return;
@@ -86,7 +96,6 @@ const QuestionnaireResponseList: React.FC<QuestionnaireResponseListProps> = ({ o
         const text = event.target?.result as string;
         const parsed = isXmlFile(file) ? parseFhirXml(text) : (JSON.parse(text) as unknown);
 
-        // Collect QuestionnaireResponse resources (single resource or FHIR Bundle)
         const resources: FhirQuestionnaireResponse[] = [];
         const rt = (parsed as { resourceType?: string }).resourceType;
 
@@ -143,9 +152,9 @@ const QuestionnaireResponseList: React.FC<QuestionnaireResponseListProps> = ({ o
     reader.readAsText(file);
   };
 
-  const responses = useMemo(() => devGetResponses(), [refreshKey]);
+  // ── Data ─────────────────────────────────────────────────────────────────────
 
-  // ── Dynamic filter options ───────────────────────────────────────────────
+  const responses = useMemo(() => devGetResponses(), [refreshKey]);
 
   const allOption = useMemo<FilterItem>(() => ({ id: ALL_ID, label: t('all', 'All') }), [t]);
 
@@ -164,7 +173,7 @@ const QuestionnaireResponseList: React.FC<QuestionnaireResponseListProps> = ({ o
     (filterQuestionnaire !== null && filterQuestionnaire.id !== ALL_ID) ||
     (filterPatient !== null && filterPatient.id !== ALL_ID);
 
-  // ── Delete ───────────────────────────────────────────────────────────────
+  // ── Delete ───────────────────────────────────────────────────────────────────
 
   const handleDelete = () => {
     if (!deleteId) return;
@@ -178,7 +187,7 @@ const QuestionnaireResponseList: React.FC<QuestionnaireResponseListProps> = ({ o
     });
   };
 
-  // ── Filtering ────────────────────────────────────────────────────────────
+  // ── Filtering ────────────────────────────────────────────────────────────────
 
   const filtered = useMemo(() => {
     const search = searchString.trim().toLowerCase();
@@ -198,9 +207,21 @@ const QuestionnaireResponseList: React.FC<QuestionnaireResponseListProps> = ({ o
     });
   }, [responses, searchString, filterQuestionnaire, filterPatient]);
 
-  const { results, goTo, currentPage } = usePagination(filtered, pageSize);
+  // ── Export ───────────────────────────────────────────────────────────────────
 
-  // ── Table data ───────────────────────────────────────────────────────────
+  const handleExport = () => {
+    if (filtered.length === 0) return;
+    if (exportFormat === 'json') {
+      exportJsonBundle(filtered);
+    } else {
+      exportPdfGrouped(filtered, groupMode);
+    }
+    setExportOpen(false);
+  };
+
+  // ── Table ────────────────────────────────────────────────────────────────────
+
+  const { results, goTo, currentPage } = usePagination(filtered, pageSize);
 
   const headers = [
     { key: 'questionnaire', header: t('questionnaire', 'Questionnaire') },
@@ -225,6 +246,7 @@ const QuestionnaireResponseList: React.FC<QuestionnaireResponseListProps> = ({ o
 
   return (
     <>
+      {/* ── Delete confirm ──────────────────────────────────── */}
       <Modal
         open={Boolean(deleteId)}
         danger
@@ -243,6 +265,70 @@ const QuestionnaireResponseList: React.FC<QuestionnaireResponseListProps> = ({ o
         </p>
       </Modal>
 
+      {/* ── Export modal ────────────────────────────────────── */}
+      <Modal
+        open={exportOpen}
+        modalHeading={t('exportResponses', 'Export responses')}
+        primaryButtonText={t('export', 'Export')}
+        primaryButtonDisabled={filtered.length === 0}
+        secondaryButtonText={t('cancel', 'Cancel')}
+        onRequestSubmit={handleExport}
+        onRequestClose={() => setExportOpen(false)}
+        onSecondarySubmit={() => setExportOpen(false)}
+      >
+        <p style={{ marginBottom: '1rem', color: '#525252', fontSize: '13px' }}>
+          {t('exportCount', `${filtered.length} response(s) selected for export based on current filters.`)}
+        </p>
+
+        <RadioButtonGroup
+          name="export-format"
+          legendText={t('format', 'Format')}
+          valueSelected={exportFormat}
+          onChange={(val) => setExportFormat(val as ExportFormat)}
+          orientation="vertical"
+          style={{ marginBottom: '1.5rem' }}
+        >
+          <RadioButton
+            id="ef-json"
+            value="json"
+            labelText={t('jsonBundle', 'JSON Bundle — FHIR R4 collection bundle (.json)')}
+          />
+          <RadioButton
+            id="ef-pdf"
+            value="pdf"
+            labelText={t('pdfReport', 'PDF Report — printable / saveable report (.pdf)')}
+          />
+        </RadioButtonGroup>
+
+        {exportFormat === 'pdf' && (
+          <RadioButtonGroup
+            name="export-grouping"
+            legendText={t('groupBy', 'Group by')}
+            valueSelected={groupMode}
+            onChange={(val) => setGroupMode(val as GroupMode)}
+            orientation="vertical"
+          >
+            <RadioButton id="eg-none" value="none" labelText={t('noGrouping', 'No grouping — chronological list')} />
+            <RadioButton
+              id="eg-questionnaire"
+              value="questionnaire"
+              labelText={t('byQuestionnaire', 'By questionnaire — one section per questionnaire')}
+            />
+            <RadioButton
+              id="eg-patient"
+              value="patient"
+              labelText={t('byPatient', 'By patient — one section per patient')}
+            />
+            <RadioButton
+              id="eg-both"
+              value="questionnaire-patient"
+              labelText={t('byBoth', 'By questionnaire then patient — two-level grouping')}
+            />
+          </RadioButtonGroup>
+        )}
+      </Modal>
+
+      {/* ── List ────────────────────────────────────────────── */}
       <Layer className={styles.container} key={refreshKey}>
         <DataTable rows={rows} headers={headers} isSortable size={responsiveSize} useZebraStyles>
           {({
@@ -283,6 +369,16 @@ const QuestionnaireResponseList: React.FC<QuestionnaireResponseListProps> = ({ o
                       style={{ display: 'none' }}
                       onChange={handleImport}
                     />
+                    <Button
+                      kind="ghost"
+                      renderIcon={DocumentExport}
+                      size={responsiveSize}
+                      onClick={() => setExportOpen(true)}
+                      disabled={filtered.length === 0}
+                    >
+                      {t('export', 'Export')}
+                      {filtered.length > 0 ? ` (${filtered.length})` : ''}
+                    </Button>
                     <Dropdown
                       id="filter-questionnaire"
                       titleText=""
