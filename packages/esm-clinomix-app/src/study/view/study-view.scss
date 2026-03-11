@@ -1,0 +1,100 @@
+@use '@carbon/layout';
+@use '@carbon/colors';
+@use '@carbon/type';
+
+.container {
+  padding: layout.$spacing-05;
+}
+
+.topBar {
+  display: flex;
+  align-items: center;
+  gap: layout.$spacing-05;
+  margin-bottom: layout.$spacing-06;
+  flex-wrap: wrap;
+}
+
+.topBarCenter {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: layout.$spacing-03;
+}
+
+.topBarActions {
+  display: flex;
+  gap: layout.$spacing-03;
+}
+
+.pageTitle {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.body {
+  max-width: 56rem;
+}
+
+.description {
+  color: colors.$gray-70;
+  margin: 0;
+}
+
+.sectionTitle {
+  @include type.type-style('heading-compact-01');
+  margin-bottom: layout.$spacing-03;
+  display: flex;
+  align-items: center;
+  gap: layout.$spacing-02;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: layout.$spacing-03;
+}
+
+.countBadge {
+  color: colors.$gray-60;
+  font-weight: 400;
+}
+
+.metaTile {
+  padding: 0;
+  overflow: hidden;
+}
+
+.metaLabel {
+  color: colors.$gray-70;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.emptyTile {
+  padding: layout.$spacing-05;
+  color: colors.$gray-70;
+}
+
+.modalHint {
+  color: colors.$gray-70;
+  margin-bottom: layout.$spacing-03;
+}
+
+.responseId {
+  font-family: monospace;
+  font-size: 0.8rem;
+  color: colors.$gray-80;
+}
+
+.responseActions {
+  display: flex;
+  align-items: center;
+  gap: layout.$spacing-02;
+}
+
+.errorTile {
+  padding: layout.$spacing-05;
+  color: colors.$red-60;
+}

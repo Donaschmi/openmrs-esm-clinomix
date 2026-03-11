@@ -35,9 +35,16 @@ export const configSchema = {
     },
     _validators: [validator((v) => v.length > 0, 'At least one person must be greeted.')],
   },
+  devMode: {
+    _type: Type.Boolean,
+    _default: false,
+    _description:
+      'When true, questionnaires and responses are persisted to localStorage instead of the FHIR backend. Toggle via the OpenMRS admin config UI — no code changes required.',
+  },
 };
 
 export type Config = {
   casualGreeting: boolean;
   whoToGreet: Array<string>;
+  devMode: boolean;
 };

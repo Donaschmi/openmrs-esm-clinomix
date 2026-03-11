@@ -28,11 +28,11 @@ import {
 import { DocumentExport, Upload, View } from '@carbon/react/icons';
 import { isDesktop, showSnackbar, useLayoutType, usePagination } from '@openmrs/esm-framework';
 import {
-  devDeleteResponse,
-  devGetResponses,
-  devSaveResponse,
   type FhirQuestionnaireResponse,
   type QuestionnaireResponseStatus,
+  useResponses,
+  useImportResponses,
+  useDeleteResponse,
 } from './questionnaire-response.resource';
 import { type ExportFormat, type GroupMode, exportJsonBundle, exportPdfGrouped } from './questionnaire-response-export';
 import { isXmlFile, parseFhirXml } from '../fhir-xml.parser';
@@ -68,6 +68,8 @@ const QuestionnaireResponseList: React.FC<QuestionnaireResponseListProps> = ({ o
   const { t } = useTranslation();
   const layout = useLayoutType();
   const responsiveSize = isDesktop(layout) ? 'sm' : 'lg';
+  const importResponses = useImportResponses();
+  const deleteResponse = useDeleteResponse();
 
   const [searchString, setSearchString] = useState('');
   const [filterQuestionnaire, setFilterQuestionnaire] = useState<FilterItem | null>(null);
@@ -119,17 +121,7 @@ const QuestionnaireResponseList: React.FC<QuestionnaireResponseListProps> = ({ o
           return;
         }
 
-        let added = 0;
-        let updated = 0;
-        const existing = devGetResponses();
-
-        for (const r of resources) {
-          const isNew = !r.id || !existing.find((x) => x.id === r.id);
-          devSaveResponse(r);
-          if (isNew) added++;
-          else updated++;
-        }
-
+        const { added, updated } = importResponses(resources);
         setRefreshKey((k) => k + 1);
         showSnackbar({
           kind: 'success',
@@ -154,7 +146,7 @@ const QuestionnaireResponseList: React.FC<QuestionnaireResponseListProps> = ({ o
 
   // ── Data ─────────────────────────────────────────────────────────────────────
 
-  const responses = useMemo(() => devGetResponses(), [refreshKey]);
+  const { responses } = useResponses();
 
   const allOption = useMemo<FilterItem>(() => ({ id: ALL_ID, label: t('all', 'All') }), [t]);
 
@@ -177,7 +169,7 @@ const QuestionnaireResponseList: React.FC<QuestionnaireResponseListProps> = ({ o
 
   const handleDelete = () => {
     if (!deleteId) return;
-    devDeleteResponse(deleteId);
+    deleteResponse(deleteId);
     setDeleteId(null);
     setRefreshKey((k) => k + 1);
     showSnackbar({

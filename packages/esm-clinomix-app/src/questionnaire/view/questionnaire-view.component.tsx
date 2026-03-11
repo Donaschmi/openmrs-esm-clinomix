@@ -18,11 +18,9 @@ import { showSnackbar } from '@openmrs/esm-framework';
 import {
   type FhirQuestionnaire,
   type FhirQuestionnaireItem,
-  devGetQuestionnaires,
-  devSaveQuestionnaires,
-  devGetVersionHistory,
-  devArchiveVersion,
-  devDeleteArchivedVersion,
+  useVersionHistory,
+  useRestoreQuestionnaire,
+  useDeleteSnapshot,
 } from '../questionnaire.resource';
 import styles from './questionnaire-view.scss';
 
@@ -98,18 +96,17 @@ const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
   onRestored,
 }) => {
   const { t } = useTranslation();
+  const { history, refresh: refreshHistory } = useVersionHistory(q.id, readOnly);
+  const restoreQuestionnaire = useRestoreQuestionnaire();
+  const deleteSnapshot = useDeleteSnapshot();
 
-  const [history, setHistory] = useState<FhirQuestionnaire[]>(() => (readOnly ? [] : devGetVersionHistory(q.id)));
   const [restoreTarget, setRestoreTarget] = useState<{ snapshot: FhirQuestionnaire; index: number } | null>(null);
   const [deleteIndex, setDeleteIndex] = useState<number | null>(null);
 
   const handleRestoreConfirm = () => {
     if (!restoreTarget) return;
     const { snapshot, index } = restoreTarget;
-    devArchiveVersion(q);
-    const all = devGetQuestionnaires();
-    devSaveQuestionnaires(all.map((x) => (x.id === q.id ? { ...snapshot, date: new Date().toISOString() } : x)));
-    devDeleteArchivedVersion(q.id, index);
+    restoreQuestionnaire(q, snapshot, index);
     setRestoreTarget(null);
     showSnackbar({
       kind: 'success',
@@ -121,8 +118,8 @@ const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
 
   const handleDeleteConfirm = () => {
     if (deleteIndex === null) return;
-    devDeleteArchivedVersion(q.id, deleteIndex);
-    setHistory(devGetVersionHistory(q.id));
+    deleteSnapshot(q.id, deleteIndex);
+    refreshHistory();
     setDeleteIndex(null);
     showSnackbar({
       kind: 'success',

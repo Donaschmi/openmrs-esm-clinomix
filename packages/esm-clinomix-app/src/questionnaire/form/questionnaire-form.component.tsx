@@ -19,17 +19,12 @@ import { showSnackbar } from '@openmrs/esm-framework';
 import {
   type FhirQuestionnaire,
   type FhirQuestionnaireItem,
-  devGetQuestionnaires,
-  devSaveQuestionnaires,
-  devArchiveVersion,
+  type VersionChoice,
   bumpVersion,
+  useSaveQuestionnaire,
 } from '../questionnaire.resource';
 import QuestionnaireItemCard from './questionnaire-item-card.component';
 import styles from './questionnaire-form.scss';
-
-const DEV_MODE = process.env.NODE_ENV === 'development';
-
-type VersionChoice = 'overwrite' | 'patch' | 'minor' | 'major';
 
 interface QuestionnaireFormProps {
   questionnaire?: FhirQuestionnaire;
@@ -66,6 +61,7 @@ function templateToNew(tpl: FhirQuestionnaire): Omit<FhirQuestionnaire, 'id'> {
 
 const QuestionnaireForm: React.FC<QuestionnaireFormProps> = ({ questionnaire, template, onBack }) => {
   const { t } = useTranslation();
+  const saveQuestionnaire = useSaveQuestionnaire();
   const isEditing = Boolean(questionnaire);
 
   const initialForm = questionnaire ?? (template ? templateToNew(template) : emptyQuestionnaire());
@@ -89,31 +85,13 @@ const QuestionnaireForm: React.FC<QuestionnaireFormProps> = ({ questionnaire, te
 
   const doSave = (choice: VersionChoice) => {
     setPendingVersionSave(false);
-
-    if (DEV_MODE) {
-      const all = devGetQuestionnaires();
-      let finalForm = { ...form, date: new Date().toISOString() };
-
-      if (isEditing && questionnaire) {
-        if (choice !== 'overwrite') {
-          devArchiveVersion(questionnaire);
-          finalForm = { ...finalForm, version: bumpVersion(questionnaire.version, choice) };
-        }
-        devSaveQuestionnaires(all.map((q) => (q.id === questionnaire.id ? { ...finalForm, id: questionnaire.id } : q)));
-      } else {
-        devSaveQuestionnaires([...all, { ...finalForm, id: `q-${Date.now()}` }]);
-      }
-
-      showSnackbar({
-        kind: 'success',
-        title: t('saved', 'Saved'),
-        subtitle: t('questionnaireSaved', 'Questionnaire saved successfully'),
-      });
-      onBack();
-      return;
-    }
-
-    // TODO: call real API — POST /ws/fhir2/R4/Questionnaire (create) or PUT (update)
+    saveQuestionnaire(form, { isEditing, original: questionnaire, versionChoice: choice });
+    showSnackbar({
+      kind: 'success',
+      title: t('saved', 'Saved'),
+      subtitle: t('questionnaireSaved', 'Questionnaire saved successfully'),
+    });
+    onBack();
   };
 
   const handleSave = () => {

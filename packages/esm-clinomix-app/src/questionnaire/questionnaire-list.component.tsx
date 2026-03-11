@@ -29,9 +29,9 @@ import { isDesktop, showSnackbar, useLayoutType, usePagination } from '@openmrs/
 import {
   type FhirQuestionnaire,
   type QuestionnaireStatus,
-  devGetQuestionnaires,
-  devSaveQuestionnaires,
   useQuestionnaires,
+  useImportQuestionnaires,
+  useDeleteQuestionnaire,
 } from './questionnaire.resource';
 import { isXmlFile, parseFhirXml } from './fhir-xml.parser';
 import styles from './questionnaire-list.scss';
@@ -48,6 +48,8 @@ const QuestionnairList: React.FC<QuestionnaireListProps> = ({ onNew, onEdit, onV
   const { t } = useTranslation();
   const layout = useLayoutType();
   const responsiveSize = isDesktop(layout) ? 'sm' : 'lg';
+  const importQuestionnaires = useImportQuestionnaires();
+  const deleteQuestionnaire = useDeleteQuestionnaire();
   const [searchString, setSearchString] = useState('');
   const [statusFilter, setStatusFilter] = useState<QuestionnaireStatus | 'all'>('all');
   const [pageSize, setPageSize] = useState(10);
@@ -91,25 +93,7 @@ const QuestionnairList: React.FC<QuestionnaireListProps> = ({ onNew, onEdit, onV
           return;
         }
 
-        const existing = devGetQuestionnaires();
-        const merged = [...existing];
-        let added = 0;
-        let updated = 0;
-
-        for (const q of resources) {
-          const id = q.id ?? `q-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-          const withId = { ...q, id };
-          const idx = merged.findIndex((x) => x.id === id);
-          if (idx >= 0) {
-            merged[idx] = withId;
-            updated++;
-          } else {
-            merged.push(withId);
-            added++;
-          }
-        }
-
-        devSaveQuestionnaires(merged);
+        const { added, updated } = importQuestionnaires(resources);
         setRefreshKey((k) => k + 1);
         showSnackbar({
           kind: 'success',
@@ -138,8 +122,7 @@ const QuestionnairList: React.FC<QuestionnaireListProps> = ({ onNew, onEdit, onV
 
   const handleDelete = () => {
     if (!deleteId) return;
-    const updated = devGetQuestionnaires().filter((q) => q.id !== deleteId);
-    devSaveQuestionnaires(updated);
+    deleteQuestionnaire(deleteId);
     setDeleteId(null);
     setRefreshKey((k) => k + 1);
     showSnackbar({

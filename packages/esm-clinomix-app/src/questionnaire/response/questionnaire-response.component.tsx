@@ -9,13 +9,11 @@ import {
   type PatientSearchResult,
   type QuestionnaireResponseAnswer,
   type QuestionnaireResponseItem,
-  devSaveResponse,
+  useSaveResponse,
   usePatientSearch,
 } from './questionnaire-response.resource';
 import QuestionnaireResponseItemComponent from './questionnaire-response-item.component';
 import styles from './questionnaire-response.scss';
-
-const DEV_MODE = process.env.NODE_ENV === 'development';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -119,6 +117,7 @@ interface QuestionnaireResponseFormProps {
 
 const QuestionnaireResponseForm: React.FC<QuestionnaireResponseFormProps> = ({ questionnaire, onBack }) => {
   const { t } = useTranslation();
+  const saveResponse = useSaveResponse();
   const session = useSession();
 
   const [answers, setAnswers] = useState<Record<string, QuestionnaireResponseAnswer>>({});
@@ -162,21 +161,16 @@ const QuestionnaireResponseForm: React.FC<QuestionnaireResponseFormProps> = ({ q
       item: buildResponseItems(questionnaire.item ?? [], answers),
     };
 
-    if (DEV_MODE) {
-      devSaveResponse(response);
-      showSnackbar({
-        kind: 'success',
-        title: status === 'completed' ? t('submitted', 'Submitted') : t('savedDraft', 'Saved as draft'),
-        subtitle:
-          status === 'completed'
-            ? t('responseSubmitted', 'Response submitted successfully')
-            : t('responseSavedDraft', 'Response saved as draft'),
-      });
-      onBack();
-      return;
-    }
-
-    // TODO: POST /ws/fhir2/R4/QuestionnaireResponse
+    saveResponse(response);
+    showSnackbar({
+      kind: 'success',
+      title: status === 'completed' ? t('submitted', 'Submitted') : t('savedDraft', 'Saved as draft'),
+      subtitle:
+        status === 'completed'
+          ? t('responseSubmitted', 'Response submitted successfully')
+          : t('responseSavedDraft', 'Response saved as draft'),
+    });
+    onBack();
   };
 
   return (

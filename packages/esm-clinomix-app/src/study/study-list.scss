@@ -1,0 +1,15 @@
+@use '@carbon/layout';
+@use '@carbon/colors';
+
+.container {
+  margin: layout.$spacing-05 0;
+}
+
+.emptyTile {
+  text-align: center;
+  padding: layout.$spacing-07;
+}
+
+.emptyContent {
+  color: colors.$gray-70;
+}
