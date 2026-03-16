@@ -83,15 +83,23 @@ const QuestionnaireForm: React.FC<QuestionnaireFormProps> = ({ questionnaire, te
     return Object.keys(next).length === 0;
   };
 
-  const doSave = (choice: VersionChoice) => {
+  const doSave = async (choice: VersionChoice) => {
     setPendingVersionSave(false);
-    saveQuestionnaire(form, { isEditing, original: questionnaire, versionChoice: choice });
-    showSnackbar({
-      kind: 'success',
-      title: t('saved', 'Saved'),
-      subtitle: t('questionnaireSaved', 'Questionnaire saved successfully'),
-    });
-    onBack();
+    try {
+      await saveQuestionnaire(form, { isEditing, original: questionnaire, versionChoice: choice });
+      showSnackbar({
+        kind: 'success',
+        title: t('saved', 'Saved'),
+        subtitle: t('questionnaireSaved', 'Questionnaire saved successfully'),
+      });
+      onBack();
+    } catch (err) {
+      showSnackbar({
+        kind: 'error',
+        title: t('error', 'Error'),
+        subtitle: err instanceof Error ? err.message : t('saveFailed', 'Failed to save questionnaire'),
+      });
+    }
   };
 
   const handleSave = () => {

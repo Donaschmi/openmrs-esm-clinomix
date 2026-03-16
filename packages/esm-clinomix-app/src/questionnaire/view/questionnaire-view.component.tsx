@@ -103,29 +103,45 @@ const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
   const [restoreTarget, setRestoreTarget] = useState<{ snapshot: FhirQuestionnaire; index: number } | null>(null);
   const [deleteIndex, setDeleteIndex] = useState<number | null>(null);
 
-  const handleRestoreConfirm = () => {
+  const handleRestoreConfirm = async () => {
     if (!restoreTarget) return;
     const { snapshot, index } = restoreTarget;
-    restoreQuestionnaire(q, snapshot, index);
-    setRestoreTarget(null);
-    showSnackbar({
-      kind: 'success',
-      title: t('restored', 'Restored'),
-      subtitle: t('snapshotRestored', 'Version restored successfully'),
-    });
-    onRestored?.();
+    try {
+      await restoreQuestionnaire(q, snapshot, index);
+      setRestoreTarget(null);
+      showSnackbar({
+        kind: 'success',
+        title: t('restored', 'Restored'),
+        subtitle: t('snapshotRestored', 'Version restored successfully'),
+      });
+      onRestored?.();
+    } catch (err) {
+      showSnackbar({
+        kind: 'error',
+        title: t('error', 'Error'),
+        subtitle: err instanceof Error ? err.message : t('restoreFailed', 'Failed to restore version'),
+      });
+    }
   };
 
-  const handleDeleteConfirm = () => {
+  const handleDeleteConfirm = async () => {
     if (deleteIndex === null) return;
-    deleteSnapshot(q.id, deleteIndex);
-    refreshHistory();
-    setDeleteIndex(null);
-    showSnackbar({
-      kind: 'success',
-      title: t('deleted', 'Deleted'),
-      subtitle: t('snapshotDeleted', 'Snapshot deleted'),
-    });
+    try {
+      await deleteSnapshot(q.id, deleteIndex);
+      refreshHistory();
+      setDeleteIndex(null);
+      showSnackbar({
+        kind: 'success',
+        title: t('deleted', 'Deleted'),
+        subtitle: t('snapshotDeleted', 'Snapshot deleted'),
+      });
+    } catch (err) {
+      showSnackbar({
+        kind: 'error',
+        title: t('error', 'Error'),
+        subtitle: err instanceof Error ? err.message : t('deleteFailed', 'Failed to delete snapshot'),
+      });
+    }
   };
 
   const metaRows: Array<{ label: string; value: React.ReactNode }> = [

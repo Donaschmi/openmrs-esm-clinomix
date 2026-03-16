@@ -57,7 +57,43 @@ export function usePatientSearch(query: string) {
   };
 }
 
-// ── localStorage helpers — private implementation detail ────────────────────
+// ── OpenMRS REST response shape ──────────────────────────────────────────────
+
+interface QuestionnaireResponseRestResult {
+  uuid: string;
+  status?: string;
+  questionnaire?: string;
+  subject?: string;
+  authored?: string;
+  /** Full FHIR JSON string — only present when ?v=full */
+  json?: string;
+}
+
+interface RestListResponse<T> {
+  results: T[];
+}
+
+function restResultToFhirQuestionnaireResponse(r: QuestionnaireResponseRestResult): FhirQuestionnaireResponse {
+  if (r.json) {
+    try {
+      const parsed = JSON.parse(r.json) as FhirQuestionnaireResponse;
+      return { ...parsed, id: r.uuid };
+    } catch {
+      // fall through to flat mapping below
+    }
+  }
+  return {
+    resourceType: 'QuestionnaireResponse',
+    id: r.uuid,
+    status: (r.status as QuestionnaireResponseStatus) ?? 'in-progress',
+    questionnaire: r.questionnaire,
+    subject: r.subject ? { reference: r.subject } : undefined,
+    authored: r.authored,
+    item: [],
+  };
+}
+
+// ── localStorage helpers — devMode only ─────────────────────────────────────
 
 const RESPONSES_KEY = 'clinomix:responses';
 
@@ -84,41 +120,59 @@ function localDeleteResponse(id: string): void {
   localStorage.setItem(RESPONSES_KEY, JSON.stringify(localGetResponses().filter((r) => r.id !== id)));
 }
 
-// ── Unified hooks — internally branch on devMode; components import only these
+// ── Unified hooks — always call hooks unconditionally; branch on devMode in body
 
 export function useResponses() {
   const { devMode } = useConfig<Config>();
+
   if (devMode) {
     const responses = localGetResponses();
-    return { responses, error: null, isLoading: false };
+    return { responses, error: null, isLoading: false, mutate: () => {} };
   }
-  // TODO: useSWR GET /ws/fhir2/R4/QuestionnaireResponse
-  return { responses: [] as FhirQuestionnaireResponse[], error: null, isLoading: false };
+
+  const { data, error, isLoading, mutate } = useSWR<{ data: RestListResponse<QuestionnaireResponseRestResult> }>(
+    devMode ? null : `${restBaseUrl}/questionnaireresponse?v=full`,
+    openmrsFetch,
+  );
+
+  const responses = (data?.data?.results ?? []).map(restResultToFhirQuestionnaireResponse);
+  return { responses, error, isLoading, mutate };
 }
 
 export function useSaveResponse() {
   const { devMode } = useConfig<Config>();
-  return (response: FhirQuestionnaireResponse): string => {
+  return async (response: FhirQuestionnaireResponse): Promise<string> => {
     if (devMode) return localSaveResponse(response);
-    // TODO: POST /ws/fhir2/R4/QuestionnaireResponse
-    return '';
+
+    const isUpdate = Boolean(response.id);
+    const url = isUpdate
+      ? `${restBaseUrl}/questionnaireresponse/${response.id}`
+      : `${restBaseUrl}/questionnaireresponse`;
+
+    const result = await openmrsFetch<QuestionnaireResponseRestResult>(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ json: JSON.stringify(response) }),
+    });
+
+    return result.data.uuid;
   };
 }
 
 export function useDeleteResponse() {
   const { devMode } = useConfig<Config>();
-  return (id: string): void => {
+  return async (id: string): Promise<void> => {
     if (devMode) {
       localDeleteResponse(id);
       return;
     }
-    // TODO: DELETE /ws/fhir2/R4/QuestionnaireResponse/{id}
+    await openmrsFetch(`${restBaseUrl}/questionnaireresponse/${id}`, { method: 'DELETE' });
   };
 }
 
 export function useImportResponses() {
   const { devMode } = useConfig<Config>();
-  return (resources: FhirQuestionnaireResponse[]): { added: number; updated: number } => {
+  return async (resources: FhirQuestionnaireResponse[]): Promise<{ added: number; updated: number }> => {
     if (devMode) {
       const existing = localGetResponses();
       let added = 0;
@@ -131,7 +185,25 @@ export function useImportResponses() {
       }
       return { added, updated };
     }
-    // TODO: batch import via FHIR transaction bundle
-    return { added: 0, updated: 0 };
+
+    let added = 0;
+    let updated = 0;
+    const headers = { 'Content-Type': 'application/json' };
+    for (const r of resources) {
+      const body = JSON.stringify({ json: JSON.stringify(r) });
+      if (r.id) {
+        try {
+          await openmrsFetch(`${restBaseUrl}/questionnaireresponse/${r.id}`, { method: 'POST', headers, body });
+          updated++;
+        } catch {
+          await openmrsFetch(`${restBaseUrl}/questionnaireresponse`, { method: 'POST', headers, body });
+          added++;
+        }
+      } else {
+        await openmrsFetch(`${restBaseUrl}/questionnaireresponse`, { method: 'POST', headers, body });
+        added++;
+      }
+    }
+    return { added, updated };
   };
 }

@@ -140,7 +140,7 @@ const QuestionnaireResponseForm: React.FC<QuestionnaireResponseFormProps> = ({ q
     });
   }, []);
 
-  const buildAndSave = (status: 'completed' | 'in-progress') => {
+  const buildAndSave = async (status: 'completed' | 'in-progress') => {
     if (status === 'completed') {
       const missing = collectRequiredLinkIds(questionnaire.item ?? []).filter((id) => !answers[id]);
       if (missing.length > 0) {
@@ -161,16 +161,24 @@ const QuestionnaireResponseForm: React.FC<QuestionnaireResponseFormProps> = ({ q
       item: buildResponseItems(questionnaire.item ?? [], answers),
     };
 
-    saveResponse(response);
-    showSnackbar({
-      kind: 'success',
-      title: status === 'completed' ? t('submitted', 'Submitted') : t('savedDraft', 'Saved as draft'),
-      subtitle:
-        status === 'completed'
-          ? t('responseSubmitted', 'Response submitted successfully')
-          : t('responseSavedDraft', 'Response saved as draft'),
-    });
-    onBack();
+    try {
+      await saveResponse(response);
+      showSnackbar({
+        kind: 'success',
+        title: status === 'completed' ? t('submitted', 'Submitted') : t('savedDraft', 'Saved as draft'),
+        subtitle:
+          status === 'completed'
+            ? t('responseSubmitted', 'Response submitted successfully')
+            : t('responseSavedDraft', 'Response saved as draft'),
+      });
+      onBack();
+    } catch (err) {
+      showSnackbar({
+        kind: 'error',
+        title: t('error', 'Error'),
+        subtitle: err instanceof Error ? err.message : t('saveFailed', 'Failed to save response'),
+      });
+    }
   };
 
   return (

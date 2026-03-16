@@ -76,7 +76,6 @@ const QuestionnaireResponseList: React.FC<QuestionnaireResponseListProps> = ({ o
   const [filterPatient, setFilterPatient] = useState<FilterItem | null>(null);
   const [pageSize, setPageSize] = useState(10);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [refreshKey, setRefreshKey] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // ── Export modal state ───────────────────────────────────────────────────────
@@ -93,7 +92,7 @@ const QuestionnaireResponseList: React.FC<QuestionnaireResponseListProps> = ({ o
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       try {
         const text = event.target?.result as string;
         const parsed = isXmlFile(file) ? parseFhirXml(text) : (JSON.parse(text) as unknown);
@@ -121,8 +120,8 @@ const QuestionnaireResponseList: React.FC<QuestionnaireResponseListProps> = ({ o
           return;
         }
 
-        const { added, updated } = importResponses(resources);
-        setRefreshKey((k) => k + 1);
+        const { added, updated } = await importResponses(resources);
+        mutate();
         showSnackbar({
           kind: 'success',
           title: t('imported', 'Imported'),
@@ -146,7 +145,7 @@ const QuestionnaireResponseList: React.FC<QuestionnaireResponseListProps> = ({ o
 
   // ── Data ─────────────────────────────────────────────────────────────────────
 
-  const { responses } = useResponses();
+  const { responses, mutate } = useResponses();
 
   const allOption = useMemo<FilterItem>(() => ({ id: ALL_ID, label: t('all', 'All') }), [t]);
 
@@ -167,16 +166,24 @@ const QuestionnaireResponseList: React.FC<QuestionnaireResponseListProps> = ({ o
 
   // ── Delete ───────────────────────────────────────────────────────────────────
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!deleteId) return;
-    deleteResponse(deleteId);
-    setDeleteId(null);
-    setRefreshKey((k) => k + 1);
-    showSnackbar({
-      kind: 'success',
-      title: t('deleted', 'Deleted'),
-      subtitle: t('responseDeleted', 'Response deleted successfully'),
-    });
+    try {
+      await deleteResponse(deleteId);
+      setDeleteId(null);
+      mutate();
+      showSnackbar({
+        kind: 'success',
+        title: t('deleted', 'Deleted'),
+        subtitle: t('responseDeleted', 'Response deleted successfully'),
+      });
+    } catch (err) {
+      showSnackbar({
+        kind: 'error',
+        title: t('error', 'Error'),
+        subtitle: err instanceof Error ? err.message : t('deleteFailed', 'Failed to delete response'),
+      });
+    }
   };
 
   // ── Filtering ────────────────────────────────────────────────────────────────
@@ -321,7 +328,7 @@ const QuestionnaireResponseList: React.FC<QuestionnaireResponseListProps> = ({ o
       </Modal>
 
       {/* ── List ────────────────────────────────────────────── */}
-      <Layer className={styles.container} key={refreshKey}>
+      <Layer className={styles.container}>
         <DataTable rows={rows} headers={headers} isSortable size={responsiveSize} useZebraStyles>
           {({
             rows: tableRows,

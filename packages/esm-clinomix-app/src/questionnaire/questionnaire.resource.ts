@@ -2,8 +2,9 @@
 // HAPI FHIR docs   — https://hapifhir.io/hapi-fhir/docs/clinical_reasoning/questionnaires.html
 
 import { useState, useMemo, useCallback } from 'react';
-import { useConfig } from '@openmrs/esm-framework';
+import { openmrsFetch, useConfig } from '@openmrs/esm-framework';
 import type { Config } from '../config-schema';
+import useSWR from 'swr';
 
 export type QuestionnaireStatus = 'draft' | 'active' | 'retired' | 'unknown';
 export type QuestionnaireItemType =
@@ -92,14 +93,51 @@ export interface FhirQuestionnaire {
   item?: FhirQuestionnaireItem[];
 }
 
-export interface FhirBundle {
-  resourceType: 'Bundle';
-  total: number;
-  entry?: Array<{ resource: FhirQuestionnaire }>;
+// ---------------------------------------------------------------------------
+// OpenMRS REST API response shapes
+// ---------------------------------------------------------------------------
+
+const REST_BASE = '/ws/rest/v1';
+
+interface QuestionnaireRestResult {
+  uuid: string;
+  title?: string;
+  status?: string;
+  version?: string;
+  description?: string;
+  date?: string;
+  publisher?: string;
+  /** Full FHIR JSON string — only present when ?v=full */
+  json?: string;
+}
+
+interface RestListResponse<T> {
+  results: T[];
+}
+
+function restResultToFhirQuestionnaire(r: QuestionnaireRestResult): FhirQuestionnaire {
+  if (r.json) {
+    try {
+      const parsed = JSON.parse(r.json) as FhirQuestionnaire;
+      return { ...parsed, id: r.uuid };
+    } catch {
+      // fall through to flat mapping below
+    }
+  }
+  return {
+    resourceType: 'Questionnaire',
+    id: r.uuid,
+    title: r.title,
+    status: (r.status as QuestionnaireStatus) ?? 'unknown',
+    version: r.version,
+    description: r.description,
+    date: r.date,
+    publisher: r.publisher,
+  };
 }
 
 // ---------------------------------------------------------------------------
-// localStorage helpers — private implementation detail
+// localStorage helpers — devMode only
 // ---------------------------------------------------------------------------
 
 const STORAGE_KEY = 'clinomix:questionnaires';
@@ -197,42 +235,37 @@ export function bumpVersion(current: string | undefined, type: 'major' | 'minor'
 }
 
 // ---------------------------------------------------------------------------
-// Unified hooks — internally branch on devMode; components import only these
+// Unified hooks — always call hooks unconditionally; branch on devMode in body
 // ---------------------------------------------------------------------------
 
 export function useQuestionnaires() {
   const { devMode } = useConfig<Config>();
+
   if (devMode) {
     const questionnaires = localGetQuestionnaires();
     return { questionnaires, total: questionnaires.length, error: null, isLoading: false, mutate: () => {} };
   }
 
-  // TODO: uncomment once the backend endpoint is live
-  // const { data, error, isLoading, mutate } = useSWR<{ data: FhirBundle }>(
-  //   `${fhirBaseUrl}/Questionnaire?_count=100&_sort=title`,
-  //   openmrsFetch,
-  // );
-  // return {
-  //   questionnaires: data?.data?.entry?.map((e) => e.resource) ?? [],
-  //   total: data?.data?.total ?? 0,
-  //   error,
-  //   isLoading,
-  //   mutate,
-  // };
+  const { data, error, isLoading, mutate } = useSWR<{ data: RestListResponse<QuestionnaireRestResult> }>(
+    devMode ? null : `${REST_BASE}/questionnaire?v=full`,
+    openmrsFetch,
+  );
 
-  return { questionnaires: [] as FhirQuestionnaire[], total: 0, error: null, isLoading: false, mutate: () => {} };
+  const questionnaires = (data?.data?.results ?? []).map(restResultToFhirQuestionnaire);
+  return { questionnaires, total: questionnaires.length, error, isLoading, mutate };
 }
 
 export type VersionChoice = 'overwrite' | 'patch' | 'minor' | 'major';
 
 export function useSaveQuestionnaire() {
   const { devMode } = useConfig<Config>();
-  return (
+  return async (
     form: Omit<FhirQuestionnaire, 'id'>,
     options: { isEditing: boolean; original?: FhirQuestionnaire; versionChoice?: VersionChoice },
-  ): string => {
+  ): Promise<string> => {
+    const { isEditing, original, versionChoice = 'overwrite' } = options;
+
     if (devMode) {
-      const { isEditing, original, versionChoice = 'overwrite' } = options;
       const all = localGetQuestionnaires();
       let finalForm = { ...form, date: new Date().toISOString() };
       let id: string;
@@ -250,25 +283,43 @@ export function useSaveQuestionnaire() {
       }
       return id;
     }
-    // TODO: POST /ws/fhir2/R4/Questionnaire (create) or PUT (update)
-    return '';
+
+    let finalForm = { ...form, date: new Date().toISOString() };
+    if (isEditing && original && versionChoice !== 'overwrite') {
+      finalForm = { ...finalForm, version: bumpVersion(original.version, versionChoice) };
+    }
+
+    const fhirQuestionnaire: FhirQuestionnaire =
+      isEditing && original
+        ? { ...finalForm, resourceType: 'Questionnaire', id: original.id }
+        : { ...finalForm, resourceType: 'Questionnaire', id: '' };
+
+    const url = isEditing && original ? `${REST_BASE}/questionnaire/${original.id}` : `${REST_BASE}/questionnaire`;
+
+    const result = await openmrsFetch<QuestionnaireRestResult>(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ json: JSON.stringify(fhirQuestionnaire) }),
+    });
+
+    return result.data.uuid;
   };
 }
 
 export function useDeleteQuestionnaire() {
   const { devMode } = useConfig<Config>();
-  return (id: string): void => {
+  return async (id: string): Promise<void> => {
     if (devMode) {
       localSaveQuestionnaires(localGetQuestionnaires().filter((q) => q.id !== id));
       return;
     }
-    // TODO: DELETE /ws/fhir2/R4/Questionnaire/{id}
+    await openmrsFetch(`${REST_BASE}/questionnaire/${id}`, { method: 'DELETE' });
   };
 }
 
 export function useImportQuestionnaires() {
   const { devMode } = useConfig<Config>();
-  return (resources: FhirQuestionnaire[]): { added: number; updated: number } => {
+  return async (resources: FhirQuestionnaire[]): Promise<{ added: number; updated: number }> => {
     if (devMode) {
       const merged = [...localGetQuestionnaires()];
       let added = 0;
@@ -288,8 +339,26 @@ export function useImportQuestionnaires() {
       localSaveQuestionnaires(merged);
       return { added, updated };
     }
-    // TODO: batch import via FHIR transaction bundle
-    return { added: 0, updated: 0 };
+
+    let added = 0;
+    let updated = 0;
+    for (const q of resources) {
+      const body = JSON.stringify({ json: JSON.stringify(q) });
+      const headers = { 'Content-Type': 'application/json' };
+      if (q.id) {
+        try {
+          await openmrsFetch(`${REST_BASE}/questionnaire/${q.id}`, { method: 'POST', headers, body });
+          updated++;
+        } catch {
+          await openmrsFetch(`${REST_BASE}/questionnaire`, { method: 'POST', headers, body });
+          added++;
+        }
+      } else {
+        await openmrsFetch(`${REST_BASE}/questionnaire`, { method: 'POST', headers, body });
+        added++;
+      }
+    }
+    return { added, updated };
   };
 }
 
@@ -311,7 +380,7 @@ export function useVersionHistory(id: string, skip = false) {
 
 export function useRestoreQuestionnaire() {
   const { devMode } = useConfig<Config>();
-  return (current: FhirQuestionnaire, snapshot: FhirQuestionnaire, snapshotIndex: number): void => {
+  return async (current: FhirQuestionnaire, snapshot: FhirQuestionnaire, snapshotIndex: number): Promise<void> => {
     if (devMode) {
       localArchiveVersion(current);
       localSaveQuestionnaires(
@@ -322,17 +391,23 @@ export function useRestoreQuestionnaire() {
       localDeleteArchivedVersion(current.id, snapshotIndex);
       return;
     }
-    // TODO: PUT /ws/fhir2/R4/Questionnaire/{id}
+    const body = JSON.stringify({
+      json: JSON.stringify({ ...snapshot, id: current.id, date: new Date().toISOString() }),
+    });
+    await openmrsFetch(`${REST_BASE}/questionnaire/${current.id}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body,
+    });
   };
 }
 
 export function useDeleteSnapshot() {
   const { devMode } = useConfig<Config>();
-  return (questionnaireId: string, snapshotIndex: number): void => {
+  return async (questionnaireId: string, snapshotIndex: number): Promise<void> => {
     if (devMode) {
       localDeleteArchivedVersion(questionnaireId, snapshotIndex);
-      return;
     }
-    // TODO: real API for snapshot management
+    // No backend endpoint for snapshot management yet
   };
 }

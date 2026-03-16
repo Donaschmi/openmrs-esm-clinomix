@@ -54,7 +54,6 @@ const QuestionnairList: React.FC<QuestionnaireListProps> = ({ onNew, onEdit, onV
   const [statusFilter, setStatusFilter] = useState<QuestionnaireStatus | 'all'>('all');
   const [pageSize, setPageSize] = useState(10);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [refreshKey, setRefreshKey] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -64,7 +63,7 @@ const QuestionnairList: React.FC<QuestionnaireListProps> = ({ onNew, onEdit, onV
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       try {
         const text = event.target?.result as string;
         const parsed = isXmlFile(file) ? parseFhirXml(text) : (JSON.parse(text) as unknown);
@@ -93,8 +92,8 @@ const QuestionnairList: React.FC<QuestionnaireListProps> = ({ onNew, onEdit, onV
           return;
         }
 
-        const { added, updated } = importQuestionnaires(resources);
-        setRefreshKey((k) => k + 1);
+        const { added, updated } = await importQuestionnaires(resources);
+        mutate();
         showSnackbar({
           kind: 'success',
           title: t('imported', 'Imported'),
@@ -116,20 +115,28 @@ const QuestionnairList: React.FC<QuestionnaireListProps> = ({ onNew, onEdit, onV
     reader.readAsText(file);
   };
 
-  const { questionnaires, isLoading, error } = useQuestionnaires();
+  const { questionnaires, isLoading, error, mutate } = useQuestionnaires();
 
   const deleteCandidate = useMemo(() => questionnaires.find((q) => q.id === deleteId), [questionnaires, deleteId]);
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!deleteId) return;
-    deleteQuestionnaire(deleteId);
-    setDeleteId(null);
-    setRefreshKey((k) => k + 1);
-    showSnackbar({
-      kind: 'success',
-      title: t('deleted', 'Deleted'),
-      subtitle: t('questionnaireDeleted', 'Questionnaire deleted successfully'),
-    });
+    try {
+      await deleteQuestionnaire(deleteId);
+      setDeleteId(null);
+      mutate();
+      showSnackbar({
+        kind: 'success',
+        title: t('deleted', 'Deleted'),
+        subtitle: t('questionnaireDeleted', 'Questionnaire deleted successfully'),
+      });
+    } catch (err) {
+      showSnackbar({
+        kind: 'error',
+        title: t('error', 'Error'),
+        subtitle: err instanceof Error ? err.message : t('deleteFailed', 'Failed to delete questionnaire'),
+      });
+    }
   };
 
   const filtered = useMemo(
@@ -198,7 +205,7 @@ const QuestionnairList: React.FC<QuestionnaireListProps> = ({ onNew, onEdit, onV
           <strong>{deleteCandidate?.title ?? deleteId}</strong>? {t('deleteWarning', 'This action cannot be undone.')}
         </p>
       </Modal>
-      <Layer className={styles.container} key={refreshKey}>
+      <Layer className={styles.container}>
         <DataTable rows={rows} headers={headers} isSortable size={responsiveSize} useZebraStyles>
           {({ rows, headers, getHeaderProps, getRowProps, getTableProps, getTableContainerProps, getToolbarProps }) => (
             <>
