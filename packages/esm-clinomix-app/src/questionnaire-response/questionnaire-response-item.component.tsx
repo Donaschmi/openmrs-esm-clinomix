@@ -1,7 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ComboBox, RadioButton, RadioButtonGroup, Stack, TextArea, TextInput } from '@carbon/react';
-import { type FhirQuestionnaireItem } from '../questionnaire.resource';
+import { type FhirQuestionnaireItem } from '@/questionnaire/questionnaire.resource';
 import { type QuestionnaireResponseAnswer } from './questionnaire-response.resource';
 import styles from './questionnaire-response.scss';
 

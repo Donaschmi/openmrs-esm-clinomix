@@ -24,8 +24,8 @@ import {
   useRemoveStudyResponse,
   useStudy,
 } from '../study.resource';
-import { useQuestionnaires } from '../../questionnaire/questionnaire.resource';
-import { useResponses } from '../../questionnaire/response/questionnaire-response.resource';
+import { useQuestionnaires } from '@/questionnaire/questionnaire.resource';
+import { useResponses } from '@/questionnaire-response/questionnaire-response.resource';
 import styles from './study-view.scss';
 
 interface StudyViewProps {

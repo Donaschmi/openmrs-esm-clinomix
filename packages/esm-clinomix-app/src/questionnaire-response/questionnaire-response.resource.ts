@@ -2,7 +2,7 @@
 
 import { openmrsFetch, restBaseUrl, useConfig } from '@openmrs/esm-framework';
 import useSWR from 'swr';
-import type { Config } from '../../config-schema';
+import type { Config } from '@/config-schema';
 
 export type QuestionnaireResponseStatus = 'in-progress' | 'completed' | 'amended' | 'entered-in-error' | 'stopped';
 

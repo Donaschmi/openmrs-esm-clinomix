@@ -15,8 +15,9 @@ module.exports = {
   transform: {
     '^.+\\.[jt]sx?$': ['@swc/jest'],
   },
-  transformIgnorePatterns: ['/node_modules/(?!@openmrs|.+\\.pnp\\.[^\\/]+$)'],
+  transformIgnorePatterns: ['/node_modules/(?!@openmrs|uuid|.+\\.pnp\\.[^\\/]+$)'],
   moduleNameMapper: {
+    '^@/(.*)$': '<rootDir>/src/$1',
     '@openmrs/esm-framework': '@openmrs/esm-framework/mock',
     '\\.(s?css)$': 'identity-obj-proxy',
     '^lodash-es/(.*)$': 'lodash/$1',

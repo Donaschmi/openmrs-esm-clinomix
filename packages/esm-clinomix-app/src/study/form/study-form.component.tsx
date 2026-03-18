@@ -22,7 +22,7 @@ import {
   useUpdateStudy,
   useStudy,
 } from '../study.resource';
-import { useQuestionnaires } from '../../questionnaire/questionnaire.resource';
+import { useQuestionnaires } from '@/questionnaire/questionnaire.resource';
 import styles from './study-form.scss';
 
 interface StudyFormProps {

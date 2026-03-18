@@ -2,17 +2,17 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Tab, TabList, TabPanel, TabPanels, Tabs } from '@carbon/react';
 import ClinomixHeader from './header/clinomix-header.component';
-import QuestionnaireList from './questionnaire/questionnaire-list.component';
-import QuestionnaireForm from './questionnaire/form/questionnaire-form.component';
-import QuestionnaireView from './questionnaire/view/questionnaire-view.component';
-import QuestionnaireResponseForm from './questionnaire/response/questionnaire-response.component';
-import QuestionnaireResponseList from './questionnaire/response/questionnaire-response-list.component';
-import QuestionnaireResponseView from './questionnaire/response/questionnaire-response-view.component';
+import QuestionnaireList from '@/questionnaire/questionnaire-list.component';
+import QuestionnaireForm from '@/questionnaire/form/questionnaire-form.component';
+import QuestionnaireView from '@/questionnaire/view/questionnaire-view.component';
+import QuestionnaireResponseForm from '@/questionnaire-response/questionnaire-response.component';
+import QuestionnaireResponseList from '@/questionnaire-response/questionnaire-response-list.component';
+import QuestionnaireResponseView from '@/questionnaire-response/questionnaire-response-view.component';
 import StudyList from './study/study-list.component';
 import StudyForm from './study/form/study-form.component';
 import StudyView from './study/view/study-view.component';
-import { useQuestionnaires, type FhirQuestionnaire } from './questionnaire/questionnaire.resource';
-import { useResponses } from './questionnaire/response/questionnaire-response.resource';
+import { useQuestionnaires, type FhirQuestionnaire } from '@/questionnaire/questionnaire.resource';
+import { useResponses } from '@/questionnaire-response/questionnaire-response.resource';
 import styles from './root.scss';
 
 type View =

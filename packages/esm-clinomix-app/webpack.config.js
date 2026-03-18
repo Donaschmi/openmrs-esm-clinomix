@@ -1,3 +1,4 @@
+const path = require('path');
 const defaultWebpackConfig = require('openmrs/default-webpack-config');
 
 module.exports = (env, argv) => {
@@ -9,6 +10,14 @@ module.exports = (env, argv) => {
   config.plugins = config.plugins.filter(
     (p) => p.constructor.name !== 'ForkTsCheckerWebpackPlugin'
   );
+
+  config.resolve = {
+    ...config.resolve,
+    alias: {
+      '@': path.resolve(__dirname, 'src'),
+      ...(config.resolve?.alias ?? {}),
+    },
+  };
 
   return config;
 };

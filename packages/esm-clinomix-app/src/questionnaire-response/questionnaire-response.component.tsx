@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Button, IconButton, InlineLoading, Layer, Search, Stack, Tag, Tile } from '@carbon/react';
 import { ArrowLeft, CheckmarkFilled, Close } from '@carbon/react/icons';
 import { showSnackbar, useSession } from '@openmrs/esm-framework';
-import { type FhirQuestionnaire, type FhirQuestionnaireItem } from '../questionnaire.resource';
+import { type FhirQuestionnaire, type FhirQuestionnaireItem } from '@/questionnaire/questionnaire.resource';
 import {
   type FhirQuestionnaireResponse,
   type PatientSearchResult,

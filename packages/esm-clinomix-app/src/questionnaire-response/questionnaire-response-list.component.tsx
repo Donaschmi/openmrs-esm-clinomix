@@ -35,7 +35,7 @@ import {
   useDeleteResponse,
 } from './questionnaire-response.resource';
 import { type ExportFormat, type GroupMode, exportJsonBundle, exportPdfGrouped } from './questionnaire-response-export';
-import { isXmlFile, parseFhirXml } from '../fhir-xml.parser';
+import { isXmlFile, parseFhirXml } from '@/questionnaire/fhir-xml.parser';
 import styles from './questionnaire-response-list.scss';
 
 interface QuestionnaireResponseListProps {
