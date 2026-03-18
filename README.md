@@ -1,220 +1,315 @@
-:wave: *New to our project? Be sure to review the [OpenMRS 3 Frontend Developer Documentation](https://openmrs.atlassian.net/wiki/x/IABBHg). You may find the [Map of the Project](https://openmrs.atlassian.net/wiki/x/MgBuHg) especially helpful.* :teacher:
+# ClinomX Frontend
 
-![Node.js CI](https://github.com/openmrs/openmrs-esm-patient-management/actions/workflows/ci.yml/badge.svg)
+OpenMRS O3 frontend for **ClinomX** — a FHIR R4-native questionnaire and response management system built on top of the OpenMRS platform.
 
-# OpenMRS Patient Management
+---
 
-This repository contains frontend modules for O3. These modules relate to registering and editing patients, searching for existing patients, creating and managing patient lists, managing patient queues in an outpatient setting and creating, editing and managing patient appointments. The modules within this repository include:
+## Contents
 
-- [Active visits app](packages/esm-active-visits-app/)
-- [Appointments app](packages/esm-appointments-app/)
-- [Bed management](packages/esm-bed-management-app/)
-- [Home page](packages/esm-home-app/)
-- [Patient list management](packages/esm-patient-list-management-app)
-- [Patient registration](packages/esm-patient-registration-app)
-- [Patient search](packages/esm-patient-search-app)
-- [Service queues](packages/esm-service-queues-app/README.md)
-- [Ward](packages/esm-ward-app)
+- [Overview](#overview)
+- [Packages](#packages)
+- [Architecture](#architecture)
+- [Source structure](#source-structure)
+- [Feature modules](#feature-modules)
+  - [questionnaire/](#questionnaire)
+  - [questionnaire-response/](#questionnaire-response)
+  - [study/](#study)
+- [Configuration](#configuration)
+- [devMode vs production mode](#devmode-vs-production-mode)
+- [Import alias `@/`](#import-alias-)
+- [Running locally](#running-locally)
+- [Building for production](#building-for-production)
+- [Tests](#tests)
 
-## Setup
+---
 
-Check out the developer documentation [in the Wiki](https://openmrs.atlassian.net/wiki/x/IABBHg).
+## Overview
 
-This monorepo uses [yarn](https://yarnpkg.com).
+The frontend is a Yarn monorepo of OpenMRS O3 microfrontends, served as a single-page application by the `@openmrs/esm-app-shell`.
 
-To install the dependencies, run:
+It provides two primary features:
 
-```bash
-yarn install
+| Feature | Description |
+|---|---|
+| **Questionnaire management** | Create, edit, version, import/export, and delete FHIR `Questionnaire` resources |
+| **Questionnaire Response management** | Fill in, save, view, import/export, and delete FHIR `QuestionnaireResponse` resources linked to OpenMRS patients |
+
+All data is modelled as [FHIR R4](https://hl7.org/fhir/R4/) resources. The backend stores the full FHIR JSON as a blob and exposes it through custom OpenMRS REST endpoints.
+
+---
+
+## Packages
+
+| Package | Description |
+|---|---|
+| [`esm-clinomix-app`](packages/esm-clinomix-app/) | ClinomX questionnaire and response management UI |
+| [`esm-home-app`](packages/esm-home-app/) | Home page / landing screen |
+
+---
+
+## Architecture
+
+```
+Browser (SystemJS)
+       │
+       ▼
+@openmrs/esm-app-shell   (pre-built, served from /openmrs/spa/)
+       │
+       ├── esm-home-app          Home page
+       └── esm-clinomix-app      Questionnaire & Response UI
+              │
+              ├── questionnaire/          FHIR Questionnaire CRUD + versioning
+              ├── questionnaire-response/ FHIR QuestionnaireResponse CRUD + export
+              └── study/                  Research study grouping
+
+              │ REST calls
+              ▼
+       OpenMRS backend  /ws/rest/v1/questionnaire
+                        /ws/rest/v1/questionnaireresponse
+                        /ws/rest/v1/patient   (patient search)
 ```
 
-To set up environment variables for the project, follow these steps:
+Each package is a standard O3 microfrontend registered via its `routes.json` and loaded by the app shell as a SystemJS module. Nginx serves the SPA static assets and proxies `/openmrs/` to the OpenMRS backend.
 
-1. Create a copy of the .env.example file by running the following command:
+---
 
-    ```bash
-    cp example.env .env
-    ```
+## Source structure
 
-2. Open the newly created .env file in the root of the project.
-
-3. Add the environment variables you need.
-
-Note: These variables are currently only used for end-to-end tests.
-
-To start a dev server for a specific module, run:
-
-```bash
-yarn start --sources 'packages/esm-<insert-package-name>-app'
+```
+frontend/
+├── Dockerfile                  Production image (nginx + pre-built SPA)
+├── nginx.conf                  Nginx config — serves SPA, proxies /openmrs/
+├── turbo.json                  Turbo build pipeline
+├── package.json                Workspace root
+│
+└── packages/
+    ├── esm-home-app/           Home page microfrontend
+    └── esm-clinomix-app/       ClinomX microfrontend
+        ├── jest.config.js
+        ├── tsconfig.json
+        ├── webpack.config.js
+        └── src/
+            ├── config-schema.ts                  Module config schema and types
+            ├── index.ts                          Entry point — registers routes & extensions
+            ├── root.component.tsx                React Router root with all page routes
+            │
+            ├── questionnaire/                    Questionnaire feature module
+            │   ├── questionnaire.resource.ts     Hooks + FHIR types + localStorage helpers
+            │   ├── questionnaire.resource.test.ts
+            │   ├── questionnaire-list.component.tsx
+            │   ├── questionnaire-list.component.test.tsx
+            │   ├── fhir-xml.parser.ts            XML → FhirQuestionnaire converter
+            │   ├── form/
+            │   │   ├── questionnaire-form.component.tsx
+            │   │   └── questionnaire-item-card.component.tsx
+            │   └── view/
+            │       └── questionnaire-view.component.tsx
+            │
+            ├── questionnaire-response/           QuestionnaireResponse feature module
+            │   ├── questionnaire-response.resource.ts
+            │   ├── questionnaire-response.resource.test.ts
+            │   ├── questionnaire-response.component.tsx
+            │   ├── questionnaire-response-item.component.tsx
+            │   ├── questionnaire-response-list.component.tsx
+            │   ├── questionnaire-response-view.component.tsx
+            │   └── questionnaire-response-export.ts
+            │
+            └── study/                            Study/trial grouping
+                ├── study.resource.ts
+                ├── study-list.component.tsx
+                ├── form/
+                └── view/
 ```
 
-This command uses the [openmrs](https://www.npmjs.com/package/openmrs) tooling to fire up a dev server running `esm-patient-management` as well as the specified module.
+---
 
-You could provide `yarn start` with as many `sources` arguments as you require. For example, to run the patient registration and patient search modules only, use:
+## Feature modules
 
-```bash
-yarn start --sources 'packages/esm-patient-search-app' --sources 'packages/esm-patient-registration-app'
-```
+### questionnaire/
 
-To run an app locally with the same [configuration that is set in the reference application](https://github.com/openmrs/openmrs-distro-referenceapplication/blob/main/frontend/config-core_demo.json), use:
+**FHIR type:** `Questionnaire` ([spec](https://hl7.org/fhir/R4/questionnaire.html))
 
-```bash
-yarn start --config-url /openmrs/spa/config-core_demo.json --sources 'packages/esm-<insert-package-name>-app'
-```
+#### Hooks (`questionnaire.resource.ts`)
 
-## Troubleshooting
+| Hook | Description |
+|---|---|
+| `useQuestionnaires()` | Returns `{ questionnaires, total, isLoading, error, mutate }`. Reads from localStorage in devMode, calls `GET /ws/rest/v1/questionnaire?v=full` in production. |
+| `useSaveQuestionnaire()` | Returns an async function `(form, options) => id`. Supports `isEditing`, `original`, and `versionChoice` (`overwrite` \| `patch` \| `minor` \| `major`). |
+| `useDeleteQuestionnaire()` | Returns an async function `(id) => void`. |
+| `useImportQuestionnaires()` | Returns an async function `(resources[]) => { added, updated }`. Merges by `id`. |
+| `useVersionHistory(id)` | Returns `{ history, refresh }` — version snapshots archived before each non-overwrite save. |
+| `useRestoreQuestionnaire()` | Returns an async function to restore a snapshot as the current version. |
+| `useDeleteSnapshot()` | Returns an async function to remove a single version snapshot. |
 
-If you notice that your local version of the application is not working or that there's a mismatch between what you see locally versus what's in the reference application, you likely have outdated versions of core libraries. To update core libraries, run the following commands:
+#### Pure utilities
 
-```bash
-# Upgrade core libraries
-yarn up openmrs @openmrs/esm-framework
+| Function | Description |
+|---|---|
+| `bumpVersion(current, type)` | Increments a semver string by `major`, `minor`, or `patch`. Returns `'1.0.0'` when `current` is undefined. |
 
-# Reset version specifiers to `next`. Don't commit actual version numbers.
-git checkout package.json
+#### Components
 
-# Run `yarn` to recreate the lockfile
-yarn
-```
+| Component | Description |
+|---|---|
+| `questionnaire-list` | Data table with search, pagination, toolbar (New / Import), per-row actions (View / Edit / Delete), and a delete confirmation modal. |
+| `questionnaire-form` | JSON editor for Questionnaire fields with a version-bump selector when editing. |
+| `questionnaire-view` | Read-only viewer; shows full FHIR JSON and a collapsible version history panel. |
+| `fhir-xml.parser` | Converts FHIR XML text to a `FhirQuestionnaire` object — used by the Import toolbar action. |
 
-## Contributing
+---
 
-Please read our [contributing](https://openmrs.atlassian.net/wiki/x/xAL-C) guide.
+### questionnaire-response/
 
-## Running tests
+**FHIR type:** `QuestionnaireResponse` ([spec](https://hl7.org/fhir/R4/questionnaireresponse.html))
 
-To run tests for all packages, run:
+#### Hooks (`questionnaire-response.resource.ts`)
 
-```bash
-yarn turbo run test
-```
+| Hook | Description |
+|---|---|
+| `usePatientSearch(query)` | Returns `{ patients, isLoading }` — calls `GET /ws/rest/v1/patient?q=...` when query length >= 2. |
+| `useResponses()` | Returns `{ responses, isLoading, error, mutate }`. Reads from localStorage in devMode, calls `GET /ws/rest/v1/questionnaireresponse?v=full` in production. |
+| `useSaveResponse()` | Returns an async function `(response) => id`. Creates or updates based on presence of `response.id`. |
+| `useDeleteResponse()` | Returns an async function `(id) => void`. |
+| `useImportResponses()` | Returns an async function `(resources[]) => { added, updated }`. |
 
-To run tests in `watch` mode, run:
+#### Components
 
-```bash
-yarn turbo run test:watch
-```
+| Component | Description |
+|---|---|
+| `questionnaire-response-list` | Lists all responses for a given questionnaire; toolbar with Fill In / Import / Export. |
+| `questionnaire-response` | Patient selector + answer form rendered from the linked questionnaire's item tree. |
+| `questionnaire-response-item` | Recursive renderer for a single FHIR `QuestionnaireResponse.item`. |
+| `questionnaire-response-view` | Read-only display of a saved response. |
+| `questionnaire-response-export` | Utility functions to export responses as JSON or CSV. |
 
-To run tests for a specific package, pass the package name to the `--filter` flag. For example, to run tests for `esm-patient-conditions-app`, run:
+---
 
-```bash
-yarn turbo test --filter=@openmrs/esm-patient-conditions-app
-```
+### study/
 
-To run a specific test file, run:
+Groups questionnaires into research studies or clinical trials. Each study links to one or more questionnaires and optionally to a patient cohort.
 
-```bash
-yarn turbo run test -- basic-search
-```
-
-The above command will only run tests in the file or files that match the provided string.
-
-You can also run the matching tests from above in watch mode by running:
-
-```bash
-yarn turbo run test:watch --basic-search
-```
-
-To generate a `coverage` report, run:
-
-```bash
-yarn turbo run coverage
-```
-
-By default, `turbo` will cache test runs. This means that re-running tests wihout changing any of the related files will return the cached logs from the last run. To bypass the cache, run tests with the `force` flag, as follows:
-
-```bash
-yarn turbo run test --force
-```
-
-### Unit tests
-
-To run unit tests, use:
-
-```sh
-yarn test
-```
-
-### E2E tests
-
-#### Setup
-
-Before running the E2E tests, you need to set up the test environment.
-
-1.  **Install Playwright browsers:**
-
-    ```sh
-    npx playwright install
-    ```
-
-2.  **Set up environment variables:**
-
-    Copy the example environment file to a new `.env` file:
-
-    ```sh
-    cp example.env .env
-    ```
-
-    The `.env` file is used to configure the E2E tests.
-
-    *   If you are running against a local OpenMRS backend instance, modify the variables in this `.env` file to match your local development environment.
-    *   If you are *not* running a local OpenMRS backend instance, you should still create the `.env` file and set the `E2E_BASE_URL` variable within it to point to a remote instance. For example:
-
-        ```
-        E2E_BASE_URL=https://dev3.openmrs.org/openmrs
-        ```
-
-#### Running tests
-
-To run E2E tests, make sure the dev server is running by using:
-
-```sh
-yarn start --sources 'packages/esm-*-app/'
-```
-
-Then, in a separate terminal, run:
-
-```sh
-yarn test-e2e --headed
-```
-
-Please read [our E2E testing guide](https://openmrs.atlassian.net/wiki/x/K4L-C) for more information about E2E testing.
-
-### Updating Playwright
-
-To upgrade your Playwright version, update both the package.json file and the [e2e/support/bamboo/playwright.Dockerfile](e2e/support/bamboo/playwright.Dockerfile).
-
-## Design patterns
-
-For documentation about our design patterns, please visit our [design system](https://zeroheight.com/23a080e38/p/880723--introduction) documentation website.
-
-## Deployment
-
-The `main` branch of this repo is deployed in a [demo environment](https://openmrs-spa.org/openmrs/spa).
+---
 
 ## Configuration
 
-This module is designed to be driven by configuration files.
+Configuration is managed through the OpenMRS config system and can be overridden in the admin UI at **System Administration → Advanced Settings → Module: esm-clinomix-app**.
 
-## Version and release
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `devMode` | Boolean | `false` | When `true`, all data is persisted to `localStorage` instead of the backend API. Intended for local UI development without a running backend. |
 
-To increment the version, run the following command:
+---
 
-```sh
-yarn release
+## devMode vs production mode
+
+Every resource hook supports two execution paths, selected by `useConfig<Config>().devMode`:
+
+```
+devMode = true                      devMode = false
+──────────────────────────────      ──────────────────────────────────────
+Read  → localStorage                Read  → GET /ws/rest/v1/questionnaire
+Write → localStorage                Write → POST /ws/rest/v1/questionnaire
+Delete→ localStorage                Delete→ DELETE /ws/rest/v1/questionnaire/:id
 ```
 
-You will need to pick the next version number. We use minor changes (e.g. `3.2.0` → `3.3.0`)
-to indicate big new features and breaking changes, and patch changes (e.g. `3.2.0` → `3.2.1`)
-otherwise.
+**localStorage keys used in devMode:**
 
-Note that this command will not create a new tag, nor publish the packages.
-After running it, make a PR or merge to `main` with the resulting changeset.
+| Key | Contents |
+|---|---|
+| `clinomix:questionnaires` | `FhirQuestionnaire[]` — current questionnaire list |
+| `clinomix:questionnaire-history` | `Record<id, FhirQuestionnaire[]>` — version snapshots |
+| `clinomix:responses` | `FhirQuestionnaireResponse[]` — all responses |
 
-Once the version bump is merged, go to GitHub and
-[draft a new release](https://github.com/openmrs/openmrs-esm-patient-management/releases/new). 
-The tag should be prefixed with `v` (e.g., `v3.2.1`), while the release title
-should be the version number (e.g., `3.2.1`). The creation of the GitHub release
-will cause GitHub Actions to publish the packages, completing the release process.
+Seed data (three sample questionnaires) is written to `clinomix:questionnaires` on first load when the key is absent.
 
-> Don't run `npm publish` or `yarn publish`. Use the above process.
+---
+
+## Import alias `@/`
+
+The `@/` alias maps to `src/` within `esm-clinomix-app` and is configured in three places:
+
+| Tool | Config file | Entry |
+|---|---|---|
+| TypeScript | `tsconfig.json` | `"paths": { "@/*": ["src/*"] }` |
+| Webpack | `webpack.config.js` | `resolve.alias['@'] = path.resolve(__dirname, 'src')` |
+| Jest | `jest.config.js` | `moduleNameMapper['^@/(.*)$'] = '<rootDir>/src/$1'` |
+
+**Convention:** use `@/` only for imports that cross feature-folder boundaries. Imports within the same folder use relative paths.
+
+```ts
+// questionnaire-response/ importing from questionnaire/ — use @/
+import type { FhirQuestionnaire } from '@/questionnaire/questionnaire.resource';
+
+// Within the same folder — stay relative
+import { bumpVersion } from './questionnaire.resource';
+```
+
+---
+
+## Running locally
+
+```bash
+# Install dependencies from the frontend/ root:
+yarn install
+
+# Start esm-clinomix-app against a local OpenMRS backend (port 8080):
+cd packages/esm-clinomix-app
+yarn start
+# Opens http://localhost:8081/openmrs/spa/
+```
+
+The `yarn start` command uses `openmrs develop`, which hot-reloads changes and proxies `/openmrs/` to `http://localhost:8080`.
+
+---
+
+## Building for production
+
+The production image is built and served with Docker. From the repository root:
+
+```bash
+# Frontend image only:
+docker build -t clinomix-frontend .
+```
+
+The Dockerfile:
+1. Installs dependencies and builds all packages with `yarn turbo run build`
+2. Copies the pre-built `@openmrs/esm-app-shell/dist/` as the app shell
+3. Generates `importmap.json` and `routes.registry.json` for the two packages
+4. Serves everything with Nginx, proxying `/openmrs/` to the backend
+
+---
+
+## Tests
+
+Tests use **Jest 29** with **@testing-library/react** and **@swc/jest** (no Babel).
+
+```bash
+# Run all tests from the frontend/ root:
+yarn turbo run test
+
+# Run tests for esm-clinomix-app only:
+cd packages/esm-clinomix-app
+yarn test
+
+# Run with coverage:
+yarn coverage
+
+# Run a single file:
+yarn test src/questionnaire/questionnaire.resource.test.ts
+```
+
+### Test files
+
+| File | What it covers |
+|---|---|
+| `questionnaire/questionnaire.resource.test.ts` | `bumpVersion`, `useQuestionnaires` (devMode + production), `useDeleteQuestionnaire`, `useSaveQuestionnaire` (new, update, version archiving) |
+| `questionnaire-response/questionnaire-response.resource.test.ts` | `usePatientSearch`, `useResponses`, `useSaveResponse`, `useDeleteResponse`, `useImportResponses` |
+| `questionnaire/questionnaire-list.component.test.tsx` | Loading skeleton, error tile, table rendering, search filtering, toolbar buttons, delete modal |
+
+### Key testing conventions
+
+- **SWR is mocked** globally via `jest.mock('swr')` in resource test files; each test calls `mockUseSWR.mockReturnValue(...)` to control fetch state.
+- **`@openmrs/esm-framework` is mocked** by the jest `moduleNameMapper` pointing to `@openmrs/esm-framework/mock`.
+- **`devMode` is controlled** by `mockUseConfig.mockReturnValue({ devMode: true/false })` in `beforeEach`.
+- **localStorage** is cleared with `localStorage.clear()` before each devMode test suite.
+- **`jest.clearAllMocks()`** is called in `beforeEach` wherever mock call counts must be isolated across tests.
